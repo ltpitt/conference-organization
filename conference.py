@@ -346,22 +346,22 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getConferencesToAttend')
     def getConferencesToAttend(self, request):
         """Get list of conferences that user has registered for."""
-        # TODO:
         # step 1: get user profile
-        prof = self._getProfileFromUser()
-        conf_keys_to_attend = prof.conferenceKeysToAttend()
-
+        profile = self._getProfileFromUser()
         # step 2: get conferenceKeysToAttend from profile.
         # to make a ndb key from websafe key you can use:
-        # ndb.Key(urlsafe=my_websafe_key_string)
+        conf_keys = [ndb.Key(urlsafe=wsck)
+                     for wsck in profile.conferenceKeysToAttend]
+
         # step 3: fetch conferences from datastore.
         # Use get_multi(array_of_keys) to fetch all keys at once.
         # Do not fetch them one by one!
-
+        conferences = ndb.get_multi(conf_keys)
         # return set of ConferenceForm objects per Conference
-        return ConferenceForms(items=[self._copyConferenceToForm(conf, "")\
-         for conf in conferences]
+        return ConferenceForms(items=[self._copyConferenceToForm(conference, "")\
+         for conference in conferences]
         )
+
 
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
