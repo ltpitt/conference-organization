@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Conference Organization server-side Python App Engine
+Conference Organization server-side Python App Engine 
 
 
 """
@@ -374,10 +374,10 @@ class ConferenceApi(remote.Service):
                     val = getattr(save_request, field)
                     if val:
                         setattr(prof, field, str(val))
-                        #if field == 'teeShirtSize':
-                        #    setattr(prof, field, str(val).upper())
-                        #else:
-                        #    setattr(prof, field, val)
+                        if field == 'teeShirtSize':
+                            setattr(prof, field, str(val).upper())
+                        else:
+                            setattr(prof, field, val)
             prof.put()
 
         # return ProfileForm
@@ -504,7 +504,6 @@ class ConferenceApi(remote.Service):
         if conferences:
             # If there are almost sold out conferences,
             # format announcement and set it in memcache
-            
             announcement = "Last chance to attend!"
             memcache.set(MEMCACHE_ANNOUNCEMENTS_KEY, announcement)
         else:
@@ -521,8 +520,6 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getAnnouncement')
     def getAnnouncement(self, request):
         """Return Announcement from memcache."""
-        # TODO 1
-        # return an existing announcement from Memcache or an empty string.
         announcement = self._cacheAnnouncement()
         return StringMessage(data=announcement)
 
