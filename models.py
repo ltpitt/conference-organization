@@ -53,6 +53,7 @@ class Conference(ndb.Model):
     maxAttendees    = ndb.IntegerProperty()
     seatsAvailable  = ndb.IntegerProperty()
 
+
 class ConferenceForm(messages.Message):
     """ConferenceForm -- Conference outbound form message"""
     name            = messages.StringField(1)
@@ -104,24 +105,27 @@ class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
     data = messages.StringField(1, required=True)
 
+
 class Session(ndb.Model):
-    """Session -- Session object -- child of the Conference"""
-    name = ndb.StringProperty(required=True)
+    """Session -- Session object"""
+    name = ndb.StringProperty()
     highlights = ndb.StringProperty()
-    speaker = ndb.StringProperty()
-    duration = ndb.StringProperty()
-    typeOfSession = ndb.StringProperty()
+#    speaker = ndb.StringProperty(required=True)
+    duration  = ndb.IntegerProperty()
+    typeOfSession  = ndb.StringProperty(repeated=True)
     date = ndb.DateProperty()
     startTime = ndb.TimeProperty()
+    websafeConferenceKey =  ndb.StringProperty()
+
 
 class SessionForm(messages.Message):
-    """SessionForm -- Session outbound from message"""
-    name = messages.StringField(1)
-    highlights = messages.StringField(2)
-    speaker = messages.StringField(3)
-    duration = messages.StringField(4)
-    typeOfSession = messages.StringField(5)
-    date = messages.StringField(6)
+    """SessionForm -- Session outbound form message"""
+    name  = messages.StringField(1)
+    highlights  = messages.StringField(2)
+#    speaker = messages.StringField(3)
+    duration = messages.IntegerField(4)
+    typeOfSession = messages.StringField(5, repeated=True)
+    date  = messages.StringField(6)
     startTime = messages.StringField(7)
-    organizerUserId = messages.StringField(8)
-    websafeConferenceKey = messages.StringField(9)
+    sessionSafeKey  = messages.StringField(8)
+    websafeConferenceKey  = messages.StringField(9)

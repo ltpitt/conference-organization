@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Conference Organization server-side Python App Engine 
+Conference Organization server-side Python App Engine
 
 
 """
@@ -32,6 +32,8 @@ from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import TeeShirtSize
 from models import StringMessage
+from models import Session
+from models import SessionForm
 
 from utils import getUserId
 
@@ -79,7 +81,7 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-@endpoints.api(name='conference', version='v1', 
+@endpoints.api(name='conference', version='v1',
     allowed_client_ids=[WEB_CLIENT_ID, API_EXPLORER_CLIENT_ID],
     scopes=[EMAIL_SCOPE])
 class ConferenceApi(remote.Service):
@@ -319,6 +321,64 @@ class ConferenceApi(remote.Service):
                 items=[self._copyConferenceToForm(conf, names[conf.organizerUserId]) for conf in \
                 conferences]
         )
+
+# - - - Session objects - - - - - - - - - - - - - -
+
+    @endpoints.method(SessionForm, SessionForm,
+            path='createSession',
+            http_method='POST', name='createSession')
+    def createSession(self, request):
+        """Create a session in a given conference; open only to the organizer of this conference."""
+        return self._createSessionObject(request)
+
+
+    def _createSessionObject(self, request):
+        """Create or update Conference object, returning SessionForm/request."""
+        # preload necessary data items
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        if not request.name:
+            raise endpoints.BadRequestException("Session 'name' field required")
+
+        #get cinference key
+        wsck = request.websafeConferenceKey
+        # get conference object
+        c_key = ndb.Key(urlsafe=wsck)
+        conf = c_key.get()
+        # check that conference exists or not
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % wsck)
+        # check that user is owner
+        if conf.organizerUserId != getUserId(endpoints.get_current_user()):
+            raise endpoints.ForbiddenException(
+                'You must be the organizer to create a session.')
+
+        # copy SessionForm/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+        # convert date and time from strings to Date objects;
+        if data['date']:
+            data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+        if data['startTime']:
+            data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H, %M").time()
+        # allocate new Session ID with Conference key as parent
+        s_id = Session.allocate_ids(size=1, parent=c_key)[0]
+        # make Session key from ID
+        s_key = ndb.Key(Session, s_id, parent=c_key)
+        data['key'] = s_key
+        data['websafeConferenceKey'] = wsck
+        del data['sessionSafeKey']
+
+        #  save session into database
+        Session(**data).put()
+
+        return request
+
+
+
 
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
