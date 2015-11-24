@@ -34,6 +34,7 @@ from models import TeeShirtSize
 from models import StringMessage
 from models import Session
 from models import SessionForm
+from models import SessionForms
 
 from utils import getUserId
 
@@ -331,6 +332,32 @@ class ConferenceApi(remote.Service):
         """Create a session in a given conference; open only to the organizer of this conference."""
         return self._createSessionObject(request)
 
+    def _copySessionToForm(self, session):
+        """Copy fields from Session to SessionForm."""
+        session_form = SessionForm()
+        for field in session_form.all_fields():
+            if hasattr(session, field.name):
+                setattr(session_form, field.name, getattr(session, field.name))
+            elif field.name == "sessionSafeKey":
+                setattr(session_form, field.name, session.key.urlsafe())
+        session_form.check_initialized()
+        return session_form
+
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/sessions',
+            http_method='GET', name='getConferenceSessions')
+    def getConferenceSessions(self, request):
+        """Given a conference, returns all sessions."""
+        # get the conference key from request
+        wsck = request.websafeConferenceKey
+        # get the conference with the specified key
+        conf = ndb.Key(urlsafe = wsck).get()
+         # query datastore to obtain session that are related to request conference keyall key
+        sessions = Session.query()
+        Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
+        # return SessionForm objects per conference
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
 
     def _createSessionObject(self, request):
         """Create or update Conference object, returning SessionForm/request."""
@@ -343,7 +370,7 @@ class ConferenceApi(remote.Service):
         if not request.name:
             raise endpoints.BadRequestException("Session 'name' field required")
 
-        #get cinference key
+        # get conference key
         wsck = request.websafeConferenceKey
         # get conference object
         c_key = ndb.Key(urlsafe=wsck)
