@@ -79,6 +79,12 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
+SESSION_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    typeOfSession=messages.StringField(1),
+    websafeConferenceKey=messages.StringField(2),
+    )
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -329,7 +335,7 @@ class ConferenceApi(remote.Service):
             path='createSession',
             http_method='POST', name='createSession')
     def createSession(self, request):
-        """Create a session in a given conference; open only to the organizer of this conference."""
+        """Create a session in a given conference (need to be logged as conference organizer)."""
         return self._createSessionObject(request)
 
     def _copySessionToForm(self, session):
@@ -352,15 +358,36 @@ class ConferenceApi(remote.Service):
         wsck = request.websafeConferenceKey
         # get the conference with the specified key
         conf = ndb.Key(urlsafe = wsck).get()
-         # query datastore to obtain session that are related to request conference keyall key
+         # query datastore to obtain session that are related to request.websafeConferenceKey
         sessions = Session.query()
         Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
         # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
+    @endpoints.method(SESSION_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/sessions/{typeOfSession}',
+            http_method='GET', name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Given a conference, return all sessions of a specified type."""
+        # get the conference key from request
+        wsck = request.websafeConferenceKey
+        for item in request:
+            print item
+        # get the conference with the specified key
+        conf = ndb.Key(urlsafe = wsck).get()
+         # query datastore to obtain session that are related to request.websafeConferenceKey
+        sessions = Session.query()
+        Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
+        Sessions = session.filter(Session.typeOfSession == request.typeOfSession)
+        # return SessionForm objects per conference
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+
+
+
     def _createSessionObject(self, request):
-        """Create or update Conference object, returning SessionForm/request."""
+        """Create or update Session object, returning SessionForm/request."""
         # preload necessary data items
         user = endpoints.get_current_user()
         if not user:
@@ -368,21 +395,24 @@ class ConferenceApi(remote.Service):
         user_id = getUserId(user)
 
         if not request.name:
-            raise endpoints.BadRequestException("Session 'name' field required")
+            raise endpoints.BadRequestException("Field 'name' is mandatory")
 
         # get conference key
         wsck = request.websafeConferenceKey
         # get conference object
-        c_key = ndb.Key(urlsafe=wsck)
+        try:
+            c_key = ndb.Key(urlsafe=wsck)
+        except:
+            raise endpoints.BadRequestException("Check your WebSafeConferenceKey")
         conf = c_key.get()
         # check that conference exists or not
         if not conf:
             raise endpoints.NotFoundException(
-                'No conference found with key: %s' % wsck)
+                'Conference key not found: %s' % wsck)
         # check that user is owner
         if conf.organizerUserId != getUserId(endpoints.get_current_user()):
             raise endpoints.ForbiddenException(
-                'You must be the organizer to create a session.')
+                'Only the conference organizer can create a session.')
 
         # copy SessionForm/ProtoRPC Message into dict
         data = {field.name: getattr(request, field.name) for field in request.all_fields()}
