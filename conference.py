@@ -338,6 +338,7 @@ class ConferenceApi(remote.Service):
         """Create a session in a given conference (need to be logged as conference organizer)."""
         return self._createSessionObject(request)
 
+
     def _copySessionToForm(self, session):
         """Copy fields from Session to SessionForm."""
         session_form = SessionForm()
@@ -348,6 +349,7 @@ class ConferenceApi(remote.Service):
                 setattr(session_form, field.name, session.key.urlsafe())
         session_form.check_initialized()
         return session_form
+
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/sessions',
@@ -372,18 +374,11 @@ class ConferenceApi(remote.Service):
         """Given a conference, return all sessions of a specified type."""
         # get the conference key from request
         wsck = request.websafeConferenceKey
-        for item in request:
-            print item
-        # get the conference with the specified key
-        conf = ndb.Key(urlsafe = wsck).get()
          # query datastore to obtain session that are related to request.websafeConferenceKey
         sessions = Session.query()
-        Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
-        Sessions = session.filter(Session.typeOfSession == request.typeOfSession)
+        sessions = sessions.filter(Session.typeOfSession == request.typeOfSession, Session.websafeConferenceKey == wsck)
         # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
-
-
 
 
     def _createSessionObject(self, request):
