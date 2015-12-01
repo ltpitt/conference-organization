@@ -368,7 +368,6 @@ class ConferenceApi(remote.Service):
          # query datastore to obtain session that are related to request.websafeConferenceKey
         sessions = Session.query()
         Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
-        # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
@@ -379,10 +378,9 @@ class ConferenceApi(remote.Service):
         """Given a conference, returns all sessions of a specified type."""
         # get the conference key from request
         wsck = request.websafeConferenceKey
-         # query datastore to obtain session that are related to request.websafeConferenceKey
+         # query datastore to obtain session that are related to request.websafeConferenceKey and request.typeOfSession
         sessions = Session.query()
         sessions = sessions.filter(Session.typeOfSession == request.typeOfSession, Session.websafeConferenceKey == wsck)
-        # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
@@ -390,9 +388,9 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
         """Given a speaker, returns all sessions given by this particular speaker, across all conferences."""
+        # query datastore to obtain session that are related to request.speaker
         sessions = Session.query()
         sessions = sessions.filter(Session.speaker == request.speaker)
-        # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
