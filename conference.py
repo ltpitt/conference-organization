@@ -79,11 +79,16 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
-SESSION_GET_REQUEST = endpoints.ResourceContainer(
+SESSION_GET_REQUEST_BY_TYPE = endpoints.ResourceContainer(
     message_types.VoidMessage,
     typeOfSession=messages.StringField(1),
     websafeConferenceKey=messages.StringField(2),
     )
+
+SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    speaker=messages.StringField(1),
+)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -367,16 +372,26 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
-    @endpoints.method(SESSION_GET_REQUEST, SessionForms,
+    @endpoints.method(SESSION_GET_REQUEST_BY_TYPE, SessionForms,
             path='conference/{websafeConferenceKey}/sessions/{typeOfSession}',
             http_method='GET', name='getConferenceSessionsByType')
     def getConferenceSessionsByType(self, request):
-        """Given a conference, return all sessions of a specified type."""
+        """Given a conference, returns all sessions of a specified type."""
         # get the conference key from request
         wsck = request.websafeConferenceKey
          # query datastore to obtain session that are related to request.websafeConferenceKey
         sessions = Session.query()
         sessions = sessions.filter(Session.typeOfSession == request.typeOfSession, Session.websafeConferenceKey == wsck)
+        # return SessionForm objects per conference
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
+            path='conference/sessions/{speaker}',
+            http_method='GET', name='getSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """Given a speaker, returns all sessions given by this particular speaker, across all conferences."""
+        sessions = Session.query()
+        sessions = sessions.filter(Session.speaker == request.speaker)
         # return SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
