@@ -90,6 +90,11 @@ SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
     speaker=messages.StringField(1),
 )
 
+SESSION_WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1),
+)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -396,12 +401,13 @@ class ConferenceApi(remote.Service):
 
     def _createSessionObject(self, request):
         """Create or update Session object, returning SessionForm/request."""
-        # preload necessary data items
+        # check if user is authorized
         user = endpoints.get_current_user()
         if not user:
             raise endpoints.UnauthorizedException('Authorization required')
         user_id = getUserId(user)
 
+        # check if field name has been sent in request
         if not request.name:
             raise endpoints.BadRequestException("Field 'name' is mandatory")
 
@@ -443,6 +449,37 @@ class ConferenceApi(remote.Service):
         return request
 
 
+    @endpoints.method(SESSION_WISHLIST_POST_REQUEST, SessionForm,
+        http_method='POST', name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add session to user's wishlist."""
+
+        # check if user is authorized
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required.')
+
+        # get requested session
+        session = ndb.Key(urlsafe=request.websafeSessionKey).get()
+
+        # raise error if session not exists
+        if not session:
+            raise endpoints.NotFoundException(
+                'No Session found with key: %s' % request.websafeSessionKey)
+
+        # get user profile
+        prof = self._getProfileFromUser()
+
+        # raise error if user already has session in wishlist
+        if session.key in prof.conferenceKeysWishlist:
+            raise endpoints.BadRequestException(
+                'Session already saved to wishlist: %s' % request.websafeSessionKey)
+
+        # append to user's session wishlist
+        prof.conferenceKeysWishlist.append(session.key)
+        prof.put()
+
+        return self._copySessionToForm(session)
 
 
 
