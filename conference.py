@@ -40,6 +40,9 @@ from utils import getUserId
 
 from settings import WEB_CLIENT_ID
 
+import logging
+
+
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
@@ -93,6 +96,11 @@ SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
 SESSION_WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeSessionKey=messages.StringField(1),
+)
+
+SESSION_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    sessionId=messages.StringField(1),
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -452,7 +460,7 @@ class ConferenceApi(remote.Service):
     @endpoints.method(SESSION_WISHLIST_POST_REQUEST, SessionForm,
         http_method='POST', name='addSessionToWishlist')
     def addSessionToWishlist(self, request):
-        """Add session to user's wishlist."""
+        """adds the session to the user's list of sessions they are interested in attending"""
 
         # check if user is authorized
         user = endpoints.get_current_user()
@@ -471,16 +479,33 @@ class ConferenceApi(remote.Service):
         prof = self._getProfileFromUser()
 
         # raise error if user already has session in wishlist
-        if session.key in prof.conferenceKeysWishlist:
+        if session.key in prof.sessionKeysWishlist:
             raise endpoints.BadRequestException(
                 'Session already saved to wishlist: %s' % request.websafeSessionKey)
 
         # append to user's session wishlist
-        prof.conferenceKeysWishlist.append(session.key)
+        prof.sessionKeysWishlist.append(request.websafeSessionKey)
         prof.put()
 
         return self._copySessionToForm(session)
 
+
+
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='sessions/wishlist',
+            http_method='GET', name='getSessionsInWishlist')
+    def getSessionsInWishlist(self, request):
+        """Get list of sessions that user has added to their Wishlist."""
+        # get user Profile
+        profile = self._getProfileFromUser()
+        session_keys = [ndb.Key(urlsafe=wsck) for wsck in profile.sessionKeysWishlist]
+        sessions = ndb.get_multi(session_keys)
+
+        # return set of Session objects per Wishlist
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
 
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
