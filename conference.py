@@ -98,6 +98,11 @@ SESSION_WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
     websafeSessionKey=messages.StringField(1),
 )
 
+SESSION_WISHLIST_DELETE_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1),
+)
+
 SESSION_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     sessionId=messages.StringField(1),
@@ -489,9 +494,6 @@ class ConferenceApi(remote.Service):
 
         return self._copySessionToForm(session)
 
-
-
-
     @endpoints.method(message_types.VoidMessage, SessionForms,
             path='sessions/wishlist',
             http_method='GET', name='getSessionsInWishlist')
@@ -506,6 +508,22 @@ class ConferenceApi(remote.Service):
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
+
+    @endpoints.method(SESSION_WISHLIST_DELETE_REQUEST, BooleanMessage,
+            path='sessions/wishlist/delete/{websafeSessionKey}',
+            http_method='DELETE', name='deleteSessionInWishlist')
+    def deleteSessionInWishlist(self, request):
+        """Delete the requested session from user's Wishlist."""
+        # get user Profile
+        profile = self._getProfileFromUser()
+        for session in profile.sessionKeysWishlist:
+            logging.debug(session)
+            if request.websafeSessionKey == session:
+                profile.sessionKeysWishlist.remove(request.websafeSessionKey)
+                profile.put()
+                return BooleanMessage(data=True)
+        else:
+            return BooleanMessage(data=False)
 
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
