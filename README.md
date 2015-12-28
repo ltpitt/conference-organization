@@ -15,11 +15,18 @@ Once authenticated user can create conference and sessions, search and attend bo
 * Download and install Google App Engine for Python: https://cloud.google.com/appengine/downloads
 * Start Google App Engine and choose File --> Add existing application
 * Choose the folder where you cloned the repository
+* Modify `application` in `app.yaml` to the your app ID
+* Modify variables the beginning of `settings.py` according to your client IDs (set in Google Dev Console)
+* Modify CLIENT_ID in `static/js/app.js` writing your Web client ID
 * Start the app and open a web browser and visit: http://localhost:8090/_ah/api/explorer
 
-### API Endpoints ###
+### Tasks ###
 
-* WORK IN PROGRESS
+Explain in a couple of paragraphs your design choices for session and speaker implementation:
+To build my Session model I decided to use simple String Properties except for duration (integer), date(DateProperty) and startTime(TimeProperty).
+This decision was based on the need of the simplest and fastest solution possible because my work is very demanding lately and the time I have for this course is everyday less.
+Using String Properties allowed me to implement Session more or less easily without giving special care to data I was entering in any field.
+This is also why my SessionForm is 100% made with StringFields and my Speaker implementation is simply adding the speaker name, as string, to the Session class.
 
 ### Contribution guidelines ###
 
