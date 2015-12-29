@@ -400,15 +400,12 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self, request):
         """Given a conference, returns all sessions."""
-        # get the conference key from request
         wsck = request.websafeConferenceKey
-        # get the conference with the specified key
-        conf = ndb.Key(urlsafe = wsck).get()
-         # query datastore to obtain session that are related to request.websafeConferenceKey
-        sessions = Session.query()
-        Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
-        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
-
+        c_key = ndb.Key(urlsafe=wsck)
+        sessions = Session.query(ancestor=c_key)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
 
     @endpoints.method(SESSION_GET_REQUEST_BY_TYPE, SessionForms,
             path='conference/{websafeConferenceKey}/sessions/{typeOfSession}',
@@ -418,9 +415,12 @@ class ConferenceApi(remote.Service):
         # get the conference key from request
         wsck = request.websafeConferenceKey
          # query datastore to obtain session that are related to request.websafeConferenceKey and request.typeOfSession
-        sessions = Session.query()
-        sessions = sessions.filter(Session.typeOfSession == request.typeOfSession, Session.websafeConferenceKey == wsck)
-        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+        c_key = ndb.Key(urlsafe=wsck)
+        sessions = Session.query(Session.typeOfSession == request.typeOfSession, ancestor=c_key)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
 
     @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
             path='conference/sessions/speaker/{speaker}',
@@ -477,16 +477,15 @@ class ConferenceApi(remote.Service):
         wsck = request.websafeConferenceKey
         # get conference object
         try:
-            c_key = ndb.Key(urlsafe=wsck)
+            conference = ndb.Key(urlsafe=request.websafeConferenceKey).get()
         except:
             raise endpoints.BadRequestException("Check your WebSafeConferenceKey")
-        conf = c_key.get()
         # check that conference exists or not
-        if not conf:
+        if not conference:
             raise endpoints.NotFoundException(
                 'Conference key not found: %s' % wsck)
         # check that user is owner
-        if conf.organizerUserId != getUserId(endpoints.get_current_user()):
+        if conference.organizerUserId != getUserId(endpoints.get_current_user()):
             raise endpoints.ForbiddenException(
                 'Only the conference organizer can create a session.')
 
@@ -499,11 +498,13 @@ class ConferenceApi(remote.Service):
         if data['startTime']:
             data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H:%M").time()
 
+        p_key = conference.key
         # allocate new Session ID with Conference key as parent
-        s_id = Session.allocate_ids(size=1, parent=c_key)[0]
+        s_id = Session.allocate_ids(size=1, parent=p_key)[0]
         # make Session key from ID
-        s_key = ndb.Key(Session, s_id, parent=c_key)
+        s_key = ndb.Key(Session, s_id, parent=p_key)
         data['key'] = s_key
+
         data['websafeConferenceKey'] = wsck
         del data['sessionSafeKey']
 
