@@ -382,12 +382,15 @@ class ConferenceApi(remote.Service):
         """Copy fields from Session to SessionForm."""
         session_form = SessionForm()
         for field in session_form.all_fields():
-            if field.name == 'startTime':
-                session_form.startTime = str(session.startTime)
-            elif hasattr(session, field.name):
-                setattr(session_form, field.name, getattr(session, field.name))
-            elif field.name == "sessionSafeKey":
-                setattr(session_form, field.name, session.key.urlsafe())
+            try:
+                if field.name == 'startTime':
+                    session_form.startTime = str(session.startTime)
+                elif hasattr(session, field.name):
+                    setattr(session_form, field.name, getattr(session, field.name))
+                elif field.name == "sessionSafeKey":
+                    setattr(session_form, field.name, session.key.urlsafe())
+            except AttributeError:
+                pass
         session_form.check_initialized()
         return session_form
 
@@ -437,7 +440,6 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.name
         sessions = Session.query()
         sessions = sessions.filter(Session.name == request.name)
-        logging.debug(request.name)
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_HIGHLIGHTS, SessionForms,
@@ -451,20 +453,13 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_TYPE_AND_STARTTIME, SessionForms,
-            path='conference/sessions/lastquery/{startTime}/{typeOfSession}',
-            http_method='GET', name='getConferenceSessionsByTypeAndStartTime')
+            path='sessions/lastquery/{typeOfSession}/{startTime}',
+            http_method='GET', name='getSessionsByTypeAndStartTime')
     def getConferenceSessionsByTypeAndStartTime(self, request):
         """Given a session Type and Start time returns all session different from what specified."""
         sessions = Session.query()
-        #sessions = Session.query(Session.typeOfSession != request.typeOfSession)
-        #requested_time = datetime.strptime(request.hour, "%H:%M").time()
-        #items = []
-        #for session in sessions:
-        #   if (session.startTime < requested_time):
-        #        items.append(self._copySessionToForm(session))
-        #return SessionForms(items=items)
+        sessions = sessions.filter(Session.highlights == "")
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
-
 
     def _createSessionObject(self, request):
         """Create or update Session object, returning SessionForm/request."""
