@@ -403,6 +403,7 @@ class ConferenceApi(remote.Service):
         wsck = request.websafeConferenceKey
         c_key = ndb.Key(urlsafe=wsck)
         sessions = Session.query(ancestor=c_key)
+        # return sessions
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -417,6 +418,7 @@ class ConferenceApi(remote.Service):
          # query datastore to obtain session that are related to request.websafeConferenceKey and request.typeOfSession
         c_key = ndb.Key(urlsafe=wsck)
         sessions = Session.query(Session.typeOfSession == request.typeOfSession, ancestor=c_key)
+        # return sessions
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -430,6 +432,7 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.speaker
         sessions = Session.query()
         sessions = sessions.filter(Session.speaker == request.speaker)
+        # return sessions
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_NAME, SessionForms,
@@ -440,6 +443,7 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.name
         sessions = Session.query()
         sessions = sessions.filter(Session.name == request.name)
+        # return sessions
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_HIGHLIGHTS, SessionForms,
@@ -450,16 +454,27 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.highlights
         sessions = Session.query()
         sessions = sessions.filter(Session.highlights == request.highlights)
+        # return sessions
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_TYPE_AND_STARTTIME, SessionForms,
-            path='sessions/lastquery/{typeOfSession}/{startTime}',
+            path='sessions/lastquery',
             http_method='GET', name='getSessionsByTypeAndStartTime')
     def getConferenceSessionsByTypeAndStartTime(self, request):
-        """Given a session Type and Start time returns all session different from what specified."""
-        sessions = Session.query()
-        sessions = sessions.filter(Session.highlights == "")
+        """Given a session Type and Start time returns all session with different type
+            and a startTime before what specified."""
+        # query datastore to obtain session that are different from specified type
+        result = Session.query(Session.typeOfSession != request.typeOfSession)
+        # turn startTime into time object
+        requestTime = datetime.strptime(request.startTime, "%H:%M").time()
+        # add to sessions list all session that have a startTime minor of requestTime
+        sessions = []
+        for session in result:
+            if session.startTime < requestTime:
+                sessions.append(session)
+        # return sessions
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
 
     def _createSessionObject(self, request):
         """Create or update Session object, returning SessionForm/request."""
@@ -504,7 +519,6 @@ class ConferenceApi(remote.Service):
         # make Session key from ID
         s_key = ndb.Key(Session, s_id, parent=p_key)
         data['key'] = s_key
-
         data['websafeConferenceKey'] = wsck
         del data['sessionSafeKey']
 
