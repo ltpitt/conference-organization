@@ -28,6 +28,11 @@ This decision was based on the need of the simplest and fastest solution possibl
 Using String Properties allowed me to implement Session more or less easily without giving special care to data I was entering in any field.
 This is also why my SessionForm is 100% made with StringFields and my Speaker implementation is simply adding the speaker name, as string, to the Session class.
 
+Think about other types of queries that would be useful for this application. Describe the purpose of 2 new queries:
+I prepared two very simple queries based on the model of the "getSessionsBySpeaker" one.
+Those two query allows a user to find all the sessions searching for specific highlights in "getSessionByHighlight"
+and to find all the sessions searching for a specific name in "getSessionByName"
+
 ### Contribution guidelines ###
 
 * If you have any idea or suggestion contact directly the Repo Owner

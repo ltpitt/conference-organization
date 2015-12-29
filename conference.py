@@ -88,9 +88,25 @@ SESSION_GET_REQUEST_BY_TYPE = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(2),
     )
 
+SESSION_GET_REQUEST_BY_TYPE_AND_STARTTIME = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    typeOfSession=messages.StringField(1),
+    startTime=messages.StringField(2),
+    )
+
 SESSION_GET_REQUEST_BY_SPEAKER = endpoints.ResourceContainer(
     message_types.VoidMessage,
     speaker=messages.StringField(1),
+)
+
+SESSION_GET_REQUEST_BY_NAME = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    name=messages.StringField(1),
+)
+
+SESSION_GET_REQUEST_BY_HIGHLIGHTS = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    highlights=messages.StringField(1),
 )
 
 SESSION_WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
@@ -366,7 +382,9 @@ class ConferenceApi(remote.Service):
         """Copy fields from Session to SessionForm."""
         session_form = SessionForm()
         for field in session_form.all_fields():
-            if hasattr(session, field.name):
+            if field.name == 'startTime':
+                session_form.startTime = str(session.startTime)
+            elif hasattr(session, field.name):
                 setattr(session_form, field.name, getattr(session, field.name))
             elif field.name == "sessionSafeKey":
                 setattr(session_form, field.name, session.key.urlsafe())
@@ -402,13 +420,49 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_SPEAKER, SessionForms,
-            path='conference/sessions/{speaker}',
+            path='conference/sessions/speaker/{speaker}',
             http_method='GET', name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
-        """Given a speaker, returns all sessions given by this particular speaker, across all conferences."""
+        """Given a speaker, returns all sessions given by this particular speaker."""
         # query datastore to obtain session that are related to request.speaker
         sessions = Session.query()
         sessions = sessions.filter(Session.speaker == request.speaker)
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_NAME, SessionForms,
+            path='conference/sessions/name/{name}',
+            http_method='GET', name='getSessionsByName')
+    def getSessionsByName(self, request):
+        """Given a Session Name, returns all sessions given by specified name."""
+        # query datastore to obtain session that are related to request.name
+        sessions = Session.query()
+        sessions = sessions.filter(Session.name == request.name)
+        logging.debug(request.name)
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_HIGHLIGHTS, SessionForms,
+            path='conference/sessions/highlights/{highlights}',
+            http_method='GET', name='getSessionsByHighlights')
+    def getSessionsByHighlights(self, request):
+        """Given a Highlight, returns all sessions given by specified highlight."""
+        # query datastore to obtain session that are related to request.highlights
+        sessions = Session.query()
+        sessions = sessions.filter(Session.highlights == request.highlights)
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(SESSION_GET_REQUEST_BY_TYPE_AND_STARTTIME, SessionForms,
+            path='conference/sessions/lastquery/{startTime}/{typeOfSession}',
+            http_method='GET', name='getConferenceSessionsByTypeAndStartTime')
+    def getConferenceSessionsByTypeAndStartTime(self, request):
+        """Given a session Type and Start time returns all session different from what specified."""
+        sessions = Session.query()
+        #sessions = Session.query(Session.typeOfSession != request.typeOfSession)
+        #requested_time = datetime.strptime(request.hour, "%H:%M").time()
+        #items = []
+        #for session in sessions:
+        #   if (session.startTime < requested_time):
+        #        items.append(self._copySessionToForm(session))
+        #return SessionForms(items=items)
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
@@ -446,8 +500,10 @@ class ConferenceApi(remote.Service):
         # convert date and time from strings to Date objects;
         if data['date']:
             data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+
         if data['startTime']:
-            data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H, %M").time()
+            data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H:%M").time()
+
         # allocate new Session ID with Conference key as parent
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         # make Session key from ID
