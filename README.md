@@ -33,6 +33,13 @@ I prepared two very simple queries based on the model of the "getSessionsBySpeak
 Those two query allows a user to find all the sessions searching for specific highlights in "getSessionByHighlight"
 and to find all the sessions searching for a specific name in "getSessionByName"
 
+The main problem to implement the requested query was that I was getting this error:
+BadRequestError: Only one inequality filter per query is supported. Encountered both typeOfSession and startTime
+
+So I remembered that I could use only one inequality filter per query.
+I decided to use a simple python for cycle to get into my session list all the sessions that were compatible with my time check.
+It was a quick solution that worked but I don't know if it is a good idea to use this kind of implementation in a very big database.
+
 ### Contribution guidelines ###
 
 * If you have any idea or suggestion contact directly the Repo Owner
