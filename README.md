@@ -24,6 +24,9 @@ Once authenticated user can create conference and sessions, search and attend bo
 
 Explain in a couple of paragraphs your design choices for session and speaker implementation:
 To build my Session model I decided to use simple String Properties except for duration (integer), date(DateProperty) and startTime(TimeProperty).
+I implemented my Sessions as children of Conference objects.
+I choose this solution because it was the recommended one and also made perfect sense to me because it was clearly reproducing the relation between a Conference and its Sessions.
+It also allowed me to explore the "parent" concept will be 100% useful in future.
 This decision was based on the need of the simplest and fastest solution possible because my work is very demanding lately and the time I have for this course is everyday less.
 Using String Properties allowed me to implement Session more or less easily without giving special care to data I was entering in any field.
 This is also why my SessionForm is 100% made with StringFields and my Speaker implementation is simply adding the speaker name, as string, to the Session class.
@@ -36,8 +39,9 @@ and to find all the sessions searching for a specific name in "getSessionByName"
 The main problem to implement the requested query was that I was getting this error:
 BadRequestError: Only one inequality filter per query is supported. Encountered both typeOfSession and startTime
 
-So I remembered that I could use only one inequality filter per query.
-I decided to use a simple python for cycle to get into my session list all the sessions that were compatible with my time check.
+Checking documentation I've read that Datastore doesn't permit filters on multiple fields.
+That is why I decided to use an inequality filter on field typeOfSession to immediately find all sessions that have a type different from the one specified from the user.
+Then I created an empty list and, with a simple python for loop I appended to the list only sessions compatible with the needed time check.
 It was a quick solution that worked but I don't know if it is a good idea to use this kind of implementation in a very big database.
 
 ### Contribution guidelines ###
