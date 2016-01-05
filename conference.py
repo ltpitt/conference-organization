@@ -411,7 +411,7 @@ class ConferenceApi(remote.Service):
         wsck = request.websafeConferenceKey
         c_key = ndb.Key(urlsafe=wsck)
         sessions = Session.query(ancestor=c_key)
-        # return sessions
+
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -426,7 +426,7 @@ class ConferenceApi(remote.Service):
          # query datastore to obtain session that are related to request.websafeConferenceKey and request.typeOfSession
         c_key = ndb.Key(urlsafe=wsck)
         sessions = Session.query(Session.typeOfSession == request.typeOfSession, ancestor=c_key)
-        # return sessions
+
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -440,7 +440,7 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.speaker
         sessions = Session.query()
         sessions = sessions.filter(Session.speaker == request.speaker)
-        # return sessions
+
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_NAME, SessionForms,
@@ -451,7 +451,7 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.name
         sessions = Session.query()
         sessions = sessions.filter(Session.name == request.name)
-        # return sessions
+
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_HIGHLIGHTS, SessionForms,
@@ -462,7 +462,7 @@ class ConferenceApi(remote.Service):
         # query datastore to obtain session that are related to request.highlights
         sessions = Session.query()
         sessions = sessions.filter(Session.highlights == request.highlights)
-        # return sessions
+
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST_BY_TYPE_AND_STARTTIME, SessionForms,
@@ -480,7 +480,7 @@ class ConferenceApi(remote.Service):
         for session in result:
             if session.startTime and session.startTime < requestTime:
                 sessions.append(session)
-        # return sessions
+
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
 
@@ -534,11 +534,14 @@ class ConferenceApi(remote.Service):
         sessions = Session.query(ancestor=ndb.Key(urlsafe=wsck)).fetch()
         # Count times the speaker will be present
         speaker_session_counter = 0
+        speaker_session_names = []
         for session in sessions:
             if session.speaker == data['speaker']:
                 speaker_session_counter += 1
+                speaker_session_names.append(session.name)
         # If speaker will be present min. 2 times add to memcache
         if speaker_session_counter > 1:
+            #self.addSpeakerToMemCache(session.speaker, speaker_session_names)
             self.addSpeakerToMemCache(session.speaker)
 
         #  save session into database
@@ -546,10 +549,12 @@ class ConferenceApi(remote.Service):
 
         return request
 
+    #def addSpeakerToMemCache(self, speaker, sessions_names):
     def addSpeakerToMemCache(self, speaker):
         """Add Speaker to MemCache; used by
         createSessionObject.
         """
+        #taskqueue.add(params={'speaker': speaker, 'sessions': sessions_names},
         taskqueue.add(params={'speaker': speaker},
             url='/tasks/store_speaker_in_memcache',
             method = 'GET'
@@ -830,7 +835,7 @@ class ConferenceApi(remote.Service):
             path='conference/featuredspeaker',
             http_method='GET', name='getFeaturedSpeaker')
     def getFeaturedSpeaker(self, request):
-        """Return Announcement from memcache."""
+        """Return featured speaker from memcache."""
         return StringMessage(data=memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY) or "")
 
 
