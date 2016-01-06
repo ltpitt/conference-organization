@@ -42,6 +42,7 @@ from settings import WEB_CLIENT_ID
 
 import logging
 
+import pickle
 
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
@@ -129,6 +130,7 @@ SESSION_WISHLIST_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     sessionId=messages.StringField(1),
 )
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -531,18 +533,25 @@ class ConferenceApi(remote.Service):
         del data['sessionSafeKey']
 
         # Load all sessions of this conference
-        sessions = Session.query(ancestor=ndb.Key(urlsafe=wsck)).fetch()
-        # Count times the speaker will be present
-        speaker_session_counter = 0
-        speaker_session_names = []
-        for session in sessions:
-            if session.speaker == data['speaker']:
-                speaker_session_counter += 1
-                speaker_session_names.append(session.name)
-        # If speaker will be present min. 2 times add to memcache
-        if speaker_session_counter > 1:
-            #self.addSpeakerToMemCache(session.speaker, speaker_session_names)
-            self.addSpeakerToMemCache(session.speaker)
+        sessions = Session.query(ancestor=ndb.Key(urlsafe=wsck))
+        # Filter all the sessions for the specified speaker
+        sessions = sessions.filter(Session.speaker == data['speaker'])
+        # If specified speaker did more than 1 session
+        if sessions.count() > 1:
+            # Create an empty dictionary
+            featured_speaker_data = {}
+            # Add to dictionary speaker key with speaker name
+            featured_speaker_data['speaker'] = data['speaker']
+            # Add to dictionary sessions_names key with empty list
+            featured_speaker_data['sessions_names'] = []
+            # Cycle sessions
+            for session in sessions:
+                # Append session name to sessions_names list
+                featured_speaker_data['sessions_names'].append(session.name)
+            # Pickle data in order to send it to memcache in a single variable
+            featured_speaker_data = pickle.dumps(featured_speaker_data)
+            # Add speaker data to memcache
+            self.addSpeakerToMemCache(featured_speaker_data)
 
         #  save session into database
         Session(**data).put()
